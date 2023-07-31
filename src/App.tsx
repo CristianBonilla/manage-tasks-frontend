@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Checkbox, List, Divider, Typography, Row, Col } from 'antd';
+import { Layout, Checkbox, List, Divider, Typography, Row, Col, Skeleton } from 'antd';
 import { MANAGE_TASKS_API } from './api/manage-tasks';
 import { TaskResponse, TaskStatus } from './models/task';
 
@@ -23,7 +23,9 @@ function App() {
       ...task,
       created: typeof task.created === 'string' ? new Date(task.created) : task.created
     }));
-    setTasks(tasks);
+    setTimeout(() => {
+      setTasks(tasks);
+    }, 1000);
   };
 
   const isCompleted = (status: TaskStatus) => status === TaskStatus.Completed;
@@ -37,29 +39,34 @@ function App() {
       <Row align="middle" style={{ height: '100%' }}>
         <Col span={24}>
           <Content style={contentStyle}>
-            <Divider orientation="left">
-              <Typography.Title level={4}>Task List</Typography.Title>
-            </Divider>
-            <List
-              size="large"
-              dataSource={tasks}
-              renderItem={(task) => (
-                <List.Item>
-                  <Typography.Paragraph editable={
-                    isCompleted(task.status) ? false : {
-                      tooltip: 'Edit Task Action',
-                      maxLength: 50,
-                      text: task.action
-                    }
-                  }>
-                    <Checkbox
-                      key={task.taskId}
-                      checked={isCompleted(task.status)}
-                    >{task.action}</Checkbox>
-                  </Typography.Paragraph>
-                </List.Item>
-              )}
-            />
+            {
+              tasks.length > 0 ?
+                <>
+                  <Divider orientation="left">
+                    <Typography.Title level={4}>Task List</Typography.Title>
+                  </Divider>
+                  <List
+                    size="large"
+                    dataSource={tasks}
+                    renderItem={(task) => (
+                      <List.Item>
+                        <Typography.Paragraph editable={
+                          isCompleted(task.status) ? false : {
+                            tooltip: 'Edit Task Action',
+                            maxLength: 50,
+                            text: task.action
+                          }
+                        }>
+                          <Checkbox
+                            key={task.taskId}
+                            checked={isCompleted(task.status)}
+                          >{task.action}</Checkbox>
+                        </Typography.Paragraph>
+                      </List.Item>
+                    )}
+                  />
+                </> : <Skeleton active />
+            }
           </Content>
         </Col>
       </Row>
