@@ -9,7 +9,7 @@ const contentStyle: React.CSSProperties = {
   padding: '.5rem',
   margin: '.5rem auto',
   backgroundColor: '#FFFFFF',
-  width: '75%',
+  width: '80%',
   maxWidth: '950px',
   userSelect: 'none'
 };
@@ -93,36 +93,9 @@ function App() {
   }, []);
 
   return (
-    <div className="wrapper" style={{ minHeight: 'calc(100vh - 1rem)' }}>
-      <Content style={{
-        ...contentStyle,
-        margin: '.5rem',
-        maxWidth: '500px'
-      }}>
-        <Form
-          name="manage-add-task"
-          form={form}
-          autoComplete="off"
-          onFinish={({ action }) => addTask(action)}
-        >
-          <Form.Item
-            label="Task Action"
-            name="action"
-            rules={[{ required: true, message: 'Please input task' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              style={{ float: 'right' }}
-            >Add Task</Button>
-          </Form.Item>
-        </Form>
-      </Content>
-      <Row align={ loading ? 'top' : 'middle' }>
-        <Col span={24}>
+    <div className="wrapper">
+      <Row align={ 'top' }>
+        <Col md={{ span: 14, order: 1 }} order={2} span={24}>
           <Content style={contentStyle}>
             {
               loading ? <Skeleton active/> :
@@ -174,6 +147,36 @@ function App() {
                     />
                   </>
             }
+          </Content>
+        </Col>
+        <Col md={{ span: 10, order: 2 }} order={1} span={24}>
+          <Content style={{
+            ...contentStyle,
+            margin: '.5rem',
+            width: 'auto',
+            maxWidth: '500px'
+          }}>
+            <Form
+              name="manage-add-task"
+              form={form}
+              autoComplete="off"
+              onFinish={({ action }) => addTask(action)}
+            >
+              <Form.Item
+                label="Task Action"
+                name="action"
+                rules={[{ required: true, message: 'Please input task' }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  style={{ float: 'right' }}
+                >Add Task</Button>
+              </Form.Item>
+            </Form>
           </Content>
         </Col>
       </Row>
