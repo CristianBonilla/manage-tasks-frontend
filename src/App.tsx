@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Row, Col, Typography, Divider, List, Skeleton, Checkbox } from 'antd';
+import { Layout, Row, Col, Typography, Divider, List, Skeleton, Empty, Checkbox, Popconfirm, Button, message, Form, Input } from 'antd';
 import { MANAGE_TASKS_API } from './api/manage-tasks';
 import { TaskRequest, TaskResponse, TaskStatus } from './models/task';
 
@@ -15,20 +15,44 @@ const contentStyle: React.CSSProperties = {
 };
 
 function App() {
+  const [loading, setLoading] = React.useState<boolean>(false);
   const [tasks, setTasks] = React.useState<TaskResponse[]>([]);
+  const [form] = Form.useForm();
 
   const fetchTasks = async () => {
-    const { data } = await MANAGE_TASKS_API.get<TaskResponse[]>('/task');
-    const tasks = data.map<TaskResponse>(task => ({
-      ...task,
-      created: typeof task.created === 'string' ? new Date(task.created) : task.created
-    }));
-    setTimeout(() => {
-      setTasks(tasks);
-    }, 1000);
+    setLoading(true);
+    const { data, status } = await MANAGE_TASKS_API.get<TaskResponse[]>('/task');
+    if (status === 200) {
+      const tasks = data.map<TaskResponse>(task => ({
+        ...task,
+        created: typeof task.created === 'string' ? new Date(task.created) : task.created
+      }));
+      setTimeout(() => {
+        setTasks(tasks);
+        setTimeout(() => {
+          setLoading(false);
+        }, 10);
+      }, 1000);
+    }
   };
 
   const isCompleted = (status: TaskStatus) => status === TaskStatus.Completed;
+
+  const addTask = async (action: string) => {
+    const taskRequest: TaskRequest = {
+      action,
+      status: TaskStatus.NotCompleted
+    };
+    const { data, status } = await MANAGE_TASKS_API.post<TaskResponse>(`/task`, taskRequest);
+    if (status === 201) {
+      setTasks([
+        ...tasks,
+        data
+      ]);
+      form.setFieldValue('action', null);
+      message.success('Task created successfully');
+    }
+  };
 
   const updateTask = async (
     task: TaskResponse,
@@ -43,9 +67,25 @@ function App() {
       action: changedAction,
       status: changedStatus
     };
-    const { data } = await MANAGE_TASKS_API.put<TaskResponse>(`/task/${task.taskId}`, taskRequest);
-    tasks[index] = data;
-    setTasks([...tasks]);
+    const { data, status } = await MANAGE_TASKS_API.put<TaskResponse>(`/task/${task.taskId}`, taskRequest);
+    if (status === 200) {
+      tasks[index] = data;
+      setTasks([...tasks]);
+      message.success('Task updated successfully');
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    const index = tasks.findIndex(task => task.taskId === taskId);
+    if (!~index) {
+      return;
+    }
+    const { status } = await MANAGE_TASKS_API.delete<void>(`/task/${taskId}`);
+    if (status === 204) {
+      tasks.splice(index, 1);
+      setTasks([...tasks]);
+      message.success('Task deleted successfully');
+    }
   };
 
   React.useEffect(() => {
@@ -53,49 +93,86 @@ function App() {
   }, []);
 
   return (
-    <div className="wrapper">
-      <Row align={tasks.length > 0 ? 'middle' : undefined} style={{ height: '100%' }}>
+    <div className="wrapper" style={{ minHeight: 'calc(100vh - 1rem)' }}>
+      <Content style={{
+        ...contentStyle,
+        margin: '.5rem',
+        maxWidth: '500px'
+      }}>
+        <Form
+          name="manage-add-task"
+          form={form}
+          autoComplete="off"
+          onFinish={({ action }) => addTask(action)}
+        >
+          <Form.Item
+            label="Task Action"
+            name="action"
+            rules={[{ required: true, message: 'Please input task' }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              style={{ float: 'right' }}
+            >Add Task</Button>
+          </Form.Item>
+        </Form>
+      </Content>
+      <Row align={ loading ? 'top' : 'middle' }>
         <Col span={24}>
           <Content style={contentStyle}>
             {
-              tasks.length > 0 ?
-                <>
-                  <Divider orientation="left">
-                    <Typography.Title level={3}>Task List</Typography.Title>
-                  </Divider>
-                  <List
-                    size="large"
-                    dataSource={tasks}
-                    renderItem={(task) => (
-                      <List.Item>
-                        <Typography.Paragraph editable={
-                          isCompleted(task.status) ? false : {
-                            tooltip: 'Edit Task Action',
-                            maxLength: 50,
-                            text: task.action,
-                            onChange: action => updateTask(task, action, task.status)
-                          }
-                        } style={{ width: '100%' }}>
-                          <Checkbox
-                            key={task.taskId}
-                            checked={isCompleted(task.status)}
-                            onChange={event => updateTask(
-                              task,
-                              task.action,
-                              event.target.checked ? TaskStatus.Completed : TaskStatus.NotCompleted
-                            )}
+              loading ? <Skeleton active/> :
+                tasks.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> :
+                  <>
+                    <Divider orientation="left">
+                      <Typography.Title level={3}>Task List</Typography.Title>
+                    </Divider>
+                    <List
+                      size="large"
+                      dataSource={tasks}
+                      renderItem={(task) => (
+                        <List.Item>
+                          <Typography.Paragraph editable={
+                            isCompleted(task.status) ? false : {
+                              tooltip: 'Edit Task Action',
+                              maxLength: 50,
+                              text: task.action,
+                              onChange: action => updateTask(task, action, task.status)
+                            }
+                          } style={{ width: '100%' }}>
+                            <Checkbox
+                              key={task.taskId}
+                              checked={isCompleted(task.status)}
+                              onChange={event => updateTask(
+                                task,
+                                task.action,
+                                event.target.checked ? TaskStatus.Completed : TaskStatus.NotCompleted
+                              )}
+                            >
+                              <Typography.Text
+                                type={isCompleted(task.status) ? 'secondary' : undefined}
+                                italic={isCompleted(task.status)}
+                                delete={isCompleted(task.status)}
+                              >{task.action}</Typography.Text>
+                            </Checkbox>
+                          </Typography.Paragraph>
+                          <Popconfirm
+                            title="Delete the task"
+                            description="Are you sure to delete this task?"
+                            okText="Yes"
+                            cancelText="No"
+                            onConfirm={_event => deleteTask(task.taskId)}
                           >
-                            <Typography.Text
-                              type={isCompleted(task.status) ? 'secondary' : undefined}
-                              italic={isCompleted(task.status)}
-                              delete={isCompleted(task.status)}
-                            >{task.action}</Typography.Text>
-                          </Checkbox>
-                        </Typography.Paragraph>
-                      </List.Item>
-                    )}
-                  />
-                </> : <Skeleton active />
+                            <Button type="primary" danger>X</Button>
+                          </Popconfirm>
+                        </List.Item>
+                      )}
+                    />
+                  </>
             }
           </Content>
         </Col>
