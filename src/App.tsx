@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Checkbox, List, Divider, Typography, Row, Col, Skeleton } from 'antd';
+import { Layout, Row, Col, Typography, Divider, List, Skeleton, Checkbox } from 'antd';
 import { MANAGE_TASKS_API } from './api/manage-tasks';
 import { TaskRequest, TaskResponse, TaskStatus } from './models/task';
 
@@ -10,7 +10,8 @@ const contentStyle: React.CSSProperties = {
   margin: '.5rem auto',
   backgroundColor: '#FFFFFF',
   width: '75%',
-  maxWidth: '950px'
+  maxWidth: '950px',
+  userSelect: 'none'
 };
 
 function App() {
@@ -29,14 +30,18 @@ function App() {
 
   const isCompleted = (status: TaskStatus) => status === TaskStatus.Completed;
 
-  const actionChange = async (task: TaskResponse, changedAction: string) => {
+  const updateTask = async (
+    task: TaskResponse,
+    changedAction: string,
+    changedStatus: TaskStatus
+  ) => {
     const index = tasks.findIndex(({ taskId }) => taskId === task.taskId);
-    if (task.action === changedAction || !~index) {
+    if ((task.action === changedAction && task.status === changedStatus) || !~index) {
       return;
     }
     const taskRequest: TaskRequest = {
       action: changedAction,
-      status: task.status
+      status: changedStatus
     };
     const { data } = await MANAGE_TASKS_API.put<TaskResponse>(`/task/${task.taskId}`, taskRequest);
     tasks[index] = data;
@@ -49,7 +54,7 @@ function App() {
 
   return (
     <div className="wrapper">
-      <Row align="middle" style={{ height: '100%' }}>
+      <Row align={tasks.length > 0 ? 'middle' : undefined} style={{ height: '100%' }}>
         <Col span={24}>
           <Content style={contentStyle}>
             {
@@ -68,13 +73,24 @@ function App() {
                             tooltip: 'Edit Task Action',
                             maxLength: 50,
                             text: task.action,
-                            onChange: action => actionChange(task, action)
+                            onChange: action => updateTask(task, action, task.status)
                           }
                         } style={{ width: '100%' }}>
                           <Checkbox
                             key={task.taskId}
                             checked={isCompleted(task.status)}
-                          >{task.action}</Checkbox>
+                            onChange={event => updateTask(
+                              task,
+                              task.action,
+                              event.target.checked ? TaskStatus.Completed : TaskStatus.NotCompleted
+                            )}
+                          >
+                            <Typography.Text
+                              type={isCompleted(task.status) ? 'secondary' : undefined}
+                              italic={isCompleted(task.status)}
+                              delete={isCompleted(task.status)}
+                            >{task.action}</Typography.Text>
+                          </Checkbox>
                         </Typography.Paragraph>
                       </List.Item>
                     )}
