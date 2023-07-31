@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout, Checkbox, List, Divider, Typography, Row, Col, Skeleton } from 'antd';
 import { MANAGE_TASKS_API } from './api/manage-tasks';
-import { TaskResponse, TaskStatus } from './models/task';
+import { TaskRequest, TaskResponse, TaskStatus } from './models/task';
 
 const { Content } = Layout;
 
@@ -10,8 +10,7 @@ const contentStyle: React.CSSProperties = {
   margin: '.5rem auto',
   backgroundColor: '#FFFFFF',
   width: '75%',
-  maxWidth: '950px',
-  flex: 'none'
+  maxWidth: '950px'
 };
 
 function App() {
@@ -30,6 +29,20 @@ function App() {
 
   const isCompleted = (status: TaskStatus) => status === TaskStatus.Completed;
 
+  const actionChange = async (task: TaskResponse, changedAction: string) => {
+    const index = tasks.findIndex(({ taskId }) => taskId === task.taskId);
+    if (task.action === changedAction || !~index) {
+      return;
+    }
+    const taskRequest: TaskRequest = {
+      action: changedAction,
+      status: task.status
+    };
+    const { data } = await MANAGE_TASKS_API.put<TaskResponse>(`/task/${task.taskId}`, taskRequest);
+    tasks[index] = data;
+    setTasks([...tasks]);
+  };
+
   React.useEffect(() => {
     fetchTasks();
   }, []);
@@ -43,7 +56,7 @@ function App() {
               tasks.length > 0 ?
                 <>
                   <Divider orientation="left">
-                    <Typography.Title level={4}>Task List</Typography.Title>
+                    <Typography.Title level={3}>Task List</Typography.Title>
                   </Divider>
                   <List
                     size="large"
@@ -54,9 +67,10 @@ function App() {
                           isCompleted(task.status) ? false : {
                             tooltip: 'Edit Task Action',
                             maxLength: 50,
-                            text: task.action
+                            text: task.action,
+                            onChange: action => actionChange(task, action)
                           }
-                        }>
+                        } style={{ width: '100%' }}>
                           <Checkbox
                             key={task.taskId}
                             checked={isCompleted(task.status)}
